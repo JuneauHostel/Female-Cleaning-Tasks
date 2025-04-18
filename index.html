@@ -32,23 +32,25 @@
         button:hover {
             background-color: #45a049;
         }
+        #resetButton {
+            display: none; /* Hidden by default */
+        }
     </style>
 </head>
 <body>
     <h1>Daily Cleaning Task</h1>
     <div id="task">Scan the QR code to get a task!</div>
     <div id="qrcode"></div>
-    <button onclick="resetTasks()">Reset Tasks Now</button>
+    <button id="resetButton" onclick="resetTasks()">Reset Tasks Now</button>
 
     <script>
         const tasks = [
-            "Vaccuum hallway",
+            "Vaccuum hallway & Your Room",
             "Wipe Bathroom Counter",
             "Wipe Down Showers",
-            "Wipe Down Window Seals",
+            "Wipe Window Seal In Your Room & Bathroom",
             "Scrub toilets",
             "Clean Bathroom Sinks",
-            "Organize entryway"
         ];
 
         const STORAGE_KEY = 'cleaningTasks';
@@ -106,6 +108,13 @@
             }
         }
 
+        function checkAdminAccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
+                document.getElementById('resetButton').style.display = 'block';
+            }
+        }
+
         function generateQRCode() {
             const currentUrl = window.location.href.split('?')[0];
             const taskUrl = `${currentUrl}?getTask=true`;
@@ -119,6 +128,7 @@
         window.onload = () => {
             generateQRCode();
             displayTask();
+            checkAdminAccess();
         };
     </script>
 </body>
