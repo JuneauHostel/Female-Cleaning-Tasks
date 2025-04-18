@@ -45,12 +45,13 @@
 
     <script>
         const tasks = [
-            "Vaccuum hallway & Your Room",
+            "Vacuum hallway",
             "Wipe Bathroom Counter",
             "Wipe Down Showers",
-            "Wipe Window Seal In Your Room & Bathroom",
+            "Wipe Down Window Seals",
             "Scrub toilets",
             "Clean Bathroom Sinks",
+            "Organize entryway"
         ];
 
         const STORAGE_KEY = 'cleaningTasks';
@@ -59,18 +60,19 @@
         function getStoredData() {
             const stored = localStorage.getItem(STORAGE_KEY);
             const lastReset = localStorage.getItem(TIMESTAMP_KEY);
-            const now = new Date().getTime();
-            const oneDay = 24 * 60 * 60 * 1000;
+            const now = new Date();
+            const today4PM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 16, 0, 0); // 4 PM today
 
-            if (lastReset && now - parseInt(lastReset) >= oneDay) {
+            // Reset if past 4 PM and last reset was before 4 PM today
+            if (lastReset && now >= today4PM && new Date(parseInt(lastReset)) < today4PM) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem(TIMESTAMP_KEY, now.toString());
-                return { remainingTasks: [...tasks], lastReset: now };
+                localStorage.setItem(TIMESTAMP_KEY, now.getTime().toString());
+                return { remainingTasks: [...tasks], lastReset: now.getTime() };
             }
 
             return {
                 remainingTasks: stored ? JSON.parse(stored) : [...tasks],
-                lastReset: lastReset ? parseInt(lastReset) : now
+                lastReset: lastReset ? parseInt(lastReset) : now.getTime()
             };
         }
 
@@ -100,14 +102,6 @@
             document.getElementById('task').innerText = "Tasks reset! Scan to get a new task.";
         }
 
-        function displayTask() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('getTask')) {
-                const task = getRandomTask();
-                document.getElementById('task').innerText = task;
-            }
-        }
-
         function checkAdminAccess() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
@@ -130,6 +124,14 @@
             displayTask();
             checkAdminAccess();
         };
+
+        function displayTask() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('getTask')) {
+                const task = getRandomTask();
+                document.getElementById('task').innerText = task;
+            }
+        }
     </script>
 </body>
 </html>
