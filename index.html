@@ -45,25 +45,35 @@
 
     <script>
         const tasks = [
-            "Vaccuum Hallway & Your Room",
-            "Wipe Bathroom Counter",
-            "Wipe Down Showers",
-            "Wipe Your Rooms Windowseal & Bathroom",
+            "End of night put drying dishes away",
+            "Wipe bathroom counter",
             "Scrub toilets",
-            "Clean Bathroom Sinks",
+            "Put linens in laundry basket downstairs",
+            "Sweep Kitchen & Dining Room",
+            "Empty all room trash cans into bathroom trashcan if 3/4th full take outside",
+            "Kitchen trash 3/4 full take out & recycling (keep liner)",
+            "Vacuum hallway & your room",
+            "Wipe down your rooms window seal & bathroom window seal",
+            "Wipe down showers",
+            "Sweep bathroom",
+            "Organize brochure case",
+            "Wipe bathroom sinks"
         ];
 
         const STORAGE_KEY = 'cleaningTasks';
         const TIMESTAMP_KEY = 'lastReset';
+        // Replace with your Google Apps Script Web App URL
+        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
 
         function getStoredData() {
             const stored = localStorage.getItem(STORAGE_KEY);
             const lastReset = localStorage.getItem(TIMESTAMP_KEY);
             const now = new Date();
-            const today4PM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 16, 0, 0); // 4 PM today
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 16, 0, 0); // Today at 4 PM
+            const lastResetDate = lastReset ? new Date(parseInt(lastReset)) : null;
 
-            // Reset if past 4 PM and last reset was before 4 PM today
-            if (lastReset && now >= today4PM && new Date(parseInt(lastReset)) < today4PM) {
+            // Reset if past 4 PM today and last reset was before today's 4 PM
+            if (lastReset && (now >= today && (!lastResetDate || lastResetDate < today))) {
                 localStorage.removeItem(STORAGE_KEY);
                 localStorage.setItem(TIMESTAMP_KEY, now.getTime().toString());
                 return { remainingTasks: [...tasks], lastReset: now.getTime() };
@@ -80,18 +90,58 @@
             localStorage.setItem(TIMESTAMP_KEY, lastReset.toString());
         }
 
-        function getRandomTask() {
+        async function logTaskToGoogleSheet(task) {
+            const now = new Date();
+            const dateString = now.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ date: dateString, task: task }),
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to log task:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error logging task:', error);
+            }
+        }
+
+        async function getRandomTask() {
             let { remainingTasks, lastReset } = getStoredData();
 
             if (remainingTasks.length === 0) {
                 return "No tasks left for today!";
             }
 
-            const randomIndex = Math.floor(Math.random() * remainingTasks.length);
-            const selectedTask = remainingTasks[randomIndex];
-            remainingTasks.splice(randomIndex, 1);
+            // Assign weights: first task gets highest weight (length), last gets 1
+            const weights = remainingTasks.map((_, index) => remainingTasks.length - index);
+            const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+            let random = Math.random() * totalWeight;
+
+            let selectedIndex = 0;
+            for (let i = 0; i < weights.length; i++) {
+                random -= weights[i];
+                if (random <= 0) {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+
+            const selectedTask = remainingTasks[selectedIndex];
+            remainingTasks.splice(selectedIndex, 1);
 
             saveStoredData(remainingTasks, lastReset);
+            await logTaskToGoogleSheet(selectedTask); // Log task to Google Sheet
             return selectedTask;
         }
 
@@ -99,6 +149,15 @@
             const now = new Date().getTime();
             saveStoredData([...tasks], now);
             document.getElementById('task').innerText = "Tasks reset! Scan to get a new task.";
+        }
+
+        function displayTask() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('getTask')) {
+                getRandomTask().then(task => {
+                    document.getElementById('task').innerText = task;
+                });
+            }
         }
 
         function checkAdminAccess() {
@@ -123,14 +182,6 @@
             displayTask();
             checkAdminAccess();
         };
-
-        function displayTask() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('getTask')) {
-                const task = getRandomTask();
-                document.getElementById('task').innerText = task;
-            }
-        }
     </script>
 </body>
 </html>
