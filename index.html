@@ -62,7 +62,6 @@
 
         const STORAGE_KEY = 'cleaningTasks';
         const TIMESTAMP_KEY = 'lastReset';
-        // Replace with your Google Apps Script Web App URL
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec';
 
         function getStoredData() {
@@ -105,11 +104,15 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ date: dateString, task: task }),
-                    mode: 'cors'
+                    mode: 'cors',
+                    redirect: 'follow'
                 });
 
+                const responseText = await response.text();
                 if (!response.ok) {
-                    console.error('Failed to log task:', response.statusText);
+                    console.error('Failed to log task:', response.status, response.statusText, responseText);
+                } else {
+                    console.log('Task logged successfully:', responseText);
                 }
             } catch (error) {
                 console.error('Error logging task:', error);
