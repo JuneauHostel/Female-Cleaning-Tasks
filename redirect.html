@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Logging Chore...</title>
+</head>
+<body>
+  <p>Logging chore, please wait...</p>
+  <script>
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec";
+    
+    // Get query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const date = urlParams.get('date') || new Date().toISOString().split('T')[0];
+    const task = urlParams.get('task') || 'Unknown Task';
+    
+    // Send POST request
+    fetch(webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, task }),
+      redirect: 'follow' // Handle redirects
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        document.body.innerHTML = `<p>Chore logged: ${task} on ${date}</p>`;
+      } else {
+        document.body.innerHTML = `<p>Error: ${data.message}</p>`;
+      }
+    })
+    .catch(error => {
+      document.body.innerHTML = `<p>Error: ${error.message}</p>`;
+    });
+  </script>
+</body>
+</html>
