@@ -32,13 +32,16 @@
         button:hover {
             background-color: #45a049;
         }
+        #resetButton {
+            display: none;
+            background-color: #ff4444;
+        }
     </style>
 </head>
 <body>
     <h1>Daily Cleaning Task</h1>
     <div id="task">Scan the QR code to get a task!</div>
     <div id="qrcode"></div>
-   
 
     <script>
         const tasks = [
@@ -59,7 +62,6 @@
 
         const STORAGE_KEY = 'cleaningTasks';
         const TIMESTAMP_KEY = 'lastReset';
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec';
 
         function getStoredData() {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -68,7 +70,6 @@
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 16, 0, 0); // Today at 4 PM
             const lastResetDate = lastReset ? new Date(parseInt(lastReset)) : null;
 
-            // Reset if past 4 PM today and last reset was before today's 4 PM
             if (lastReset && (now >= today && (!lastResetDate || lastResetDate < today))) {
                 localStorage.removeItem(STORAGE_KEY);
                 localStorage.setItem(TIMESTAMP_KEY, now.getTime().toString());
@@ -86,44 +87,13 @@
             localStorage.setItem(TIMESTAMP_KEY, lastReset.toString());
         }
 
-        async function logTaskToGoogleSheet(task) {
-            const now = new Date();
-            const dateString = now.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            });
-
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ date: dateString, task: task }),
-                    mode: 'cors',
-                    redirect: 'follow'
-                });
-
-                const responseText = await response.text();
-                if (!response.ok) {
-                    console.error('Failed to log task:', response.status, response.statusText, responseText);
-                } else {
-                    console.log('Task logged successfully:', responseText);
-                }
-            } catch (error) {
-                console.error('Error logging task:', error);
-            }
-        }
-
-        async function getRandomTask() {
+        function getRandomTask() {
             let { remainingTasks, lastReset } = getStoredData();
 
             if (remainingTasks.length === 0) {
                 return "No tasks left for today!";
             }
 
-            // Assign weights: first task gets highest weight (length), last gets 1
             const weights = remainingTasks.map((_, index) => remainingTasks.length - index);
             const totalWeight = weights.reduce((sum, w) => sum + w, 0);
             let random = Math.random() * totalWeight;
@@ -141,7 +111,6 @@
             remainingTasks.splice(selectedIndex, 1);
 
             saveStoredData(remainingTasks, lastReset);
-            await logTaskToGoogleSheet(selectedTask); // Log task to Google Sheet
             return selectedTask;
         }
 
@@ -149,15 +118,7 @@
             const now = new Date().getTime();
             saveStoredData([...tasks], now);
             document.getElementById('task').innerText = "Tasks reset! Scan to get a new task.";
-        }
-
-        function displayTask() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('getTask')) {
-                getRandomTask().then(task => {
-                    document.getElementById('task').innerText = task;
-                });
-            }
+            generateQRCode();
         }
 
         function checkAdminAccess() {
@@ -168,19 +129,41 @@
         }
 
         function generateQRCode() {
+            // Generate QR code linking to ?getTask=true (matches printed QR code)
             const currentUrl = window.location.href.split('?')[0];
             const taskUrl = `${currentUrl}?getTask=true`;
+
+            // Clear previous QR code
+            document.getElementById('qrcode').innerHTML = "";
+
+            // Generate new QR code
             new QRCode(document.getElementById("qrcode"), {
                 text: taskUrl,
                 width: 200,
                 height: 200
             });
+
+            // Keep placeholder text
+            document.getElementById('task').innerText = "Scan the QR code to get a task!";
         }
 
         window.onload = () => {
-            generateQRCode();
-            displayTask();
-            checkAdminAccess();
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('getTask') && urlParams.get('getTask') === 'true') {
+                // Select random task and redirect to redirect.html
+                const selectedTask = getRandomTask();
+                const now = new Date();
+                const dateString = now.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const redirectUrl = `https://juneauhostel.github.io/Female-Cleaning-Tasks/redirect.html?date=${encodeURIComponent(dateString)}&task=${encodeURIComponent(selectedTask)}`;
+                window.location.href = redirectUrl;
+            } else {
+                generateQRCode();
+                checkAdminAccess();
+            }
         };
     </script>
 </body>
