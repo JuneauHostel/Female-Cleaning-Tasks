@@ -19,14 +19,35 @@
         }
         #qrcode {
             margin: 20px auto;
-        }      
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #resetButton {
+            display: none;
+            background-color: #ff4444;
+        }
+        #resetButton:hover {
+            background-color: #cc0000;
+        }
     </style>
 </head>
 <body>
     <h1>Daily Cleaning Task</h1>
     <div id="task">Scan the QR code to get a task!</div>
     <div id="qrcode"></div>
-  
+    <button onclick="generateQRCode()">Refresh QR Code</button>
+    <button id="resetButton" onclick="resetTasks()">Reset Tasks</button>
 
     <script>
         const SCRIPT_URL = 'https://script.google.com/a/macros/digitalseeds.dev/s/AKfycbzOumAQdXOkZuOOjTne2krE2P8laCeLKRpPgarSeqY-knw92nTcFzIZHvYqYmQfnuDbIg/exec';
@@ -44,20 +65,13 @@
             document.getElementById('task').innerText = "Scan the QR code to get a task!";
         }
 
-        // Reset task list via Apps Script
-        async function resetTasks() {
-            try {
-                const response = await fetch(`${SCRIPT_URL}?action=reset&admin=true`);
-                const data = await response.json();
-                if (data.status === 'success') {
-                    document.getElementById('task').innerText = "Tasks reset! Scan to get a new task.";
-                    generateQRCode();
-                } else {
-                    alert(`Error resetting tasks: ${data.message}`);
-                }
-            } catch (error) {
-                alert(`Error resetting tasks: ${error.message}`);
-            }
+        // Reset task list via form submission to Apps Script
+        function resetTasks() {
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = `${SCRIPT_URL}?action=reset&admin=true`;
+            document.body.appendChild(form);
+            form.submit();
         }
 
         // Show reset button for admin access (?admin=true)
@@ -69,21 +83,11 @@
         }
 
         // Handle page load and QR code scan (?getTask=true)
-        window.onload = async () => {
+        window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('getTask') && urlParams.get('getTask') === 'true') {
-                try {
-                    const response = await fetch(`${SCRIPT_URL}?action=getTask`);
-                    const data = await response.json();
-                    if (data.status === 'success') {
-                        const redirectUrl = `https://juneauhostel.github.io/Female-Cleaning-Tasks/redirect.html?date=${encodeURIComponent(data.date)}&task=${encodeURIComponent(data.task)}`;
-                        window.location.href = redirectUrl;
-                    } else {
-                        alert(`Error getting task: ${data.task || data.message}`);
-                    }
-                } catch (error) {
-                    alert(`Error getting task: ${error.message}`);
-                }
+                // Redirect to redirect.html to fetch and log task
+                window.location.href = 'https://juneauhostel.github.io/Female-Cleaning-Tasks/redirect.html?action=getTask';
             } else {
                 generateQRCode();
                 checkAdminAccess();
