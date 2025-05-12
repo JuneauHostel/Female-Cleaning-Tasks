@@ -5,27 +5,39 @@
 </head>
 <body>
   <p>Logging chore, please wait...</p>
-  <form id="choreForm" action="https://script.google.com/a/macros/digitalseeds.dev/s/AKfycbz7HDFWorrQDenAKAxM02OZd2iD7u-4Xp-h6c_Lq8qAV8EkhwNK66H8CYZ1-AqllkmW/exec" method="POST">
+  <form id="choreForm" action="https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec" method="POST">
     <input type="hidden" name="date" id="dateInput">
     <input type="hidden" name="task" id="taskInput">
   </form>
   <script>
+    const SCRIPT_URL = 'https://script.google.com/a/macros/digitalseeds.dev/s/AKfycbzOumAQdXOkZuOOjTne2krE2P8laCeLKRpPgarSeqY-knw92nTcFzIZHvYqYmQfnuDbIg/exec';
     const urlParams = new URLSearchParams(window.location.search);
-    const date = urlParams.get('date') || new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    const task = urlParams.get('task') || 'Unknown Task';
-    document.getElementById('dateInput').value = date;
-    document.getElementById('taskInput').value = task;
-    const form = document.getElementById('choreForm');
-    form.addEventListener('submit', () => {
-      setTimeout(() => {
-        document.body.innerHTML = `<p>Chore logged: ${task} on ${date}</p>`;
-      }, 500);
-    });
-    form.submit();
+
+    if (urlParams.get('action') === 'getTask') {
+      // Redirect to Apps Script to fetch task
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = `${SCRIPT_URL}?action=getTask`;
+      document.body.appendChild(form);
+      form.submit();
+    } else {
+      // Handle task logging (from Apps Script redirect)
+      const date = urlParams.get('date') || new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const task = urlParams.get('task') || 'Unknown Task';
+      document.getElementById('dateInput').value = date;
+      document.getElementById('taskInput').value = task;
+      const form = document.getElementById('choreForm');
+      form.addEventListener('submit', () => {
+        setTimeout(() => {
+          document.body.innerHTML = `<p>Chore logged: ${task} on ${date}</p><a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Scan another QR code</a>`;
+        }, 500);
+      });
+      form.submit();
+    }
   </script>
 </body>
 </html>
