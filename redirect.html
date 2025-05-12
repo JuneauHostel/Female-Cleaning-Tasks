@@ -15,27 +15,46 @@
 
     if (urlParams.get('action') === 'getTask') {
       // Redirect to Apps Script to fetch task
+      console.log('Redirecting to Apps Script for task');
       const form = document.createElement('form');
       form.method = 'GET';
       form.action = `${SCRIPT_URL}?action=getTask`;
       document.body.appendChild(form);
       form.submit();
     } else {
-      // Handle task logging (from Apps Script redirect)
+      // Handle task logging
       const date = urlParams.get('date') || new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
       });
       const task = urlParams.get('task') || 'Unknown Task';
+      console.log('Logging task:', { date, task });
+
+      // Set form inputs
       document.getElementById('dateInput').value = date;
       document.getElementById('taskInput').value = task;
+
+      // Submit form and handle response
       const form = document.getElementById('choreForm');
       form.addEventListener('submit', () => {
+        // Delay to ensure submission completes
         setTimeout(() => {
-          document.body.innerHTML = `<p>Chore logged: ${task} on ${date}</p><a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Scan another QR code</a>`;
-        }, 500);
+          // Attempt to fetch response (if redirected)
+          fetch(form.action, { method: 'POST', body: new FormData(form), redirect: 'manual' })
+            .then(response => response.json())
+            .catch(() => ({ status: 'error', message: 'No JSON response' }))
+            .then(data => {
+              if (data.status === 'success') {
+                document.body.innerHTML = `<p>Chore logged: ${task} on ${date}</p><a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Scan another QR code</a>`;
+              } else {
+                document.body.innerHTML = `<p>Error logging chore: ${data.message}</p><a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Try again</a>`;
+              }
+            });
+        }, 1000);
       });
+
+      // Submit form
       form.submit();
     }
   </script>
