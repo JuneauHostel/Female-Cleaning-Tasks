@@ -1,62 +1,83 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Logging Chore...</title>
+    <title>Logging Chore...</title>
 </head>
 <body>
-  <p>Logging chore, please wait...</p>
-  <form id="choreForm" action="https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec" method="POST">
-    <input type="hidden" name="date" id="dateInput">
-    <input type="hidden" name="task" id="taskInput">
-  </form>
-  <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec';
-    const urlParams = new URLSearchParams(window.location.search);
+    <p>Fetching chore, please wait...</p>
+    <form id="choreForm" action="https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec" method="POST">
+        <input type="hidden" name="date" id="dateInput">
+        <input type="hidden" name="task" id="taskInput">
+    </form>
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec';
+        const urlParams = new URLSearchParams(window.location.search);
 
-    if (urlParams.get('action') === 'getTask') {
-      // Redirect to Apps Script to fetch task
-      console.log('Redirecting to Apps Script for task');
-      const form = document.createElement('form');
-      form.method = 'GET';
-      form.action = `${SCRIPT_URL}?action=getTask`;
-      document.body.appendChild(form);
-      form.submit();
-    } else {
-      // Handle task logging
-      const date = urlParams.get('date') || new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
-      const task = urlParams.get('task') || 'Unknown Task';
-      console.log('Logging task:', { date, task });
+        if (urlParams.get('action') === 'getTask') {
+            // Fetch random task
+            fetch(`${SCRIPT_URL}?action=getTask`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const date = new Date().toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                        const task = data.task;
 
-      // Set form inputs
-      document.getElementById('dateInput').value = date;
-      document.getElementById('taskInput').value = task;
+                        // Set form inputs
+                        document.getElementById('dateInput').value = date;
+                        document.getElementById('taskInput').value = task;
 
-      // Submit form and handle response
-      const form = document.getElementById('choreForm');
-      form.addEventListener('submit', () => {
-        // Delay to ensure submission completes
-        setTimeout(() => {
-          // Attempt to fetch response (if redirected)
-          fetch(form.action, { method: 'POST', body: new FormData(form), redirect: 'manual' })
-            .then(response => response.json())
-            .catch(() => ({ status: 'error', message: 'No JSON response' }))
-            .then(data => {
-              if (data.status === 'success') {
-                document.body.innerHTML = `<p>Chore logged: ${task} on ${date}</p><a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Scan another QR code</a>`;
-              } else {
-                document.body.innerHTML = `<p>Error logging chore: ${data.message}</p><a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Try again</a>`;
-              }
-            });
-        }, 1000);
-      });
+                        // Submit form to log task
+                        const form = document.getElementById('choreForm');
+                        fetch(form.action, {
+                            method: 'POST',
+                            body: new FormData(form)
+                        })
+                            .then(response => response.json())
+                            .then(logData => {
+                                if (logData.status === 'success') {
+                                    document.body.innerHTML = `
+                                        <p>Chore logged: ${task} on ${date}</p>
+                                        <a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Scan another QR code</a>
+                                    `;
+                                } else {
+                                    document.body.innerHTML = `
+                                        <p>Error logging chore: ${logData.message}</p>
+                                        <a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Try again</a>
+                                    `;
+                                }
+                            })
+                            .catch(error => {
+                                document.body.innerHTML = `
+                                    <p>Error logging chore: ${error.message}</p>
+                                    <a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Try again</a>
+                                `;
+                            });
 
-      // Submit form
-      form.submit();
-    }
-  </script>
+                        // Submit form
+                        form.submit();
+                    } else {
+                        document.body.innerHTML = `
+                            <p>Error fetching chore: ${data.message}</p>
+                            <a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Try again</a>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    document.body.innerHTML = `
+                        <p>Error fetching chore: ${error.message}</p>
+                        <a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Try again</a>
+                    `;
+                });
+        } else {
+            document.body.innerHTML = `
+                <p>Invalid action</p>
+                <a href="https://juneauhostel.github.io/Female-Cleaning-Tasks/">Go back</a>
+            `;
+        }
+    </script>
 </body>
 </html>
