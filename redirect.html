@@ -5,12 +5,12 @@
 </head>
 <body>
     <p>Fetching chore, please wait...</p>
-    <form id="choreForm" action="https://script.google.com/macros/s/AKfycbxTIT7ta4WS-_hmV-pEVZwv5QPim-0KUZEvKgvtCSu5fs3jvhC0uYmueIuRFkVc4_uwLA/exec" method="POST">
+    <form id="choreForm" action="https://script.google.com/macros/s/AKfycbxLvSy7N0S_iiBqX_tV0vgNpthMZJq4KceCJhhCQ3230KJg5u_tZR3pjZoawfPet2Tqaw/exec" method="POST">
         <input type="hidden" name="date" id="dateInput">
         <input type="hidden" name="task" id="taskInput">
     </form>
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxTIT7ta4WS-_hmV-pEVZwv5QPim-0KUZEvKgvtCSu5fs3jvhC0uYmueIuRFkVc4_uwLA/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLvSy7N0S_iiBqX_tV0vgNpthMZJq4KceCJhhCQ3230KJg5u_tZR3pjZoawfPet2Tqaw/exec';
         const urlParams = new URLSearchParams(window.location.search);
 
         if (urlParams.get('action') === 'getTask') {
