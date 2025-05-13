@@ -52,10 +52,9 @@
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwO88huoFkRnogiqbbeHw7LF3Z6PThamGXc8roItx-7vUNTRAjwU4Tnsj6Hqt_qb6m-SQ/exec';
 
-        // Generate QR code linking to ?getTask=true (matches printed QR code)
+        // Generate QR code linking to task endpoint
         function generateQRCode() {
-            const currentUrl = window.location.href.split('?')[0];
-            const taskUrl = `${currentUrl}?getTask=true`;
+            const taskUrl = `${SCRIPT_URL}?action=getTask`;
             document.getElementById('qrcode').innerHTML = "";
             new QRCode(document.getElementById("qrcode"), {
                 text: taskUrl,
@@ -65,16 +64,21 @@
             document.getElementById('task').innerText = "Scan the QR code to get a task!";
         }
 
-        // Reset task list via form submission to Apps Script
+        // Reset task list
         function resetTasks() {
-            const form = document.createElement('form');
-            form.method = 'GET';
-            form.action = `${SCRIPT_URL}?action=reset&admin=true`;
-            document.body.appendChild(form);
-            form.submit();
+            fetch(`${SCRIPT_URL}?action=reset&admin=true`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Tasks have been reset!');
+                    } else {
+                        alert('Error resetting tasks: ' + data.message);
+                    }
+                })
+                .catch(error => alert('Error resetting tasks: ' + error.message));
         }
 
-        // Show reset button for admin access (?admin=true)
+        // Show reset button for admin access
         function checkAdminAccess() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
@@ -82,16 +86,10 @@
             }
         }
 
-        // Handle page load and QR code scan (?getTask=true)
+        // Initialize page
         window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('getTask') && urlParams.get('getTask') === 'true') {
-                // Redirect to redirect.html to fetch and log task
-                window.location.href = 'https://juneauhostel.github.io/Female-Cleaning-Tasks/redirect.html?action=getTask';
-            } else {
-                generateQRCode();
-                checkAdminAccess();
-            }
+            generateQRCode();
+            checkAdminAccess();
         };
     </script>
 </body>
