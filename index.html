@@ -44,29 +44,54 @@
 </head>
 <body>
     <h1>Daily Cleaning Task</h1>
-    <div id="task">Scan the QR code to get a task!</div>
+    <div id="task">Loading task...</div>
     <div id="qrcode"></div>
+    <form id="choreForm" action="redirect.html">
+        <input type="hidden" name="task" id="taskInput">
+        <input type="hidden" name="date" id="dateInput">
+        <button type="submit">Complete Chore</button>
+    </form>
     <button onclick="generateQRCode()">Refresh QR Code</button>
     <button id="resetButton" onclick="resetTasks()">Reset Tasks</button>
 
     <script>
-        const SCRIPT_URL = const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwETb_mVok6-a-6QnQd-CgBBKEckKTEwv9qXHqorOgXW14ZCgwxOWs6AvJZ5zcjwttk/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwETb_mVok6-a-6QnQd-CgBBKEckKTEwv9qXHqorOgXW14ZCgwxOWs6AvJZ5zcjwttk/exec';
 
-        // Generate QR code linking to task endpoint
+        // Generate QR code and fetch task
         function generateQRCode() {
-            const taskUrl = `${SCRIPT_URL}?action=getTask`;
             document.getElementById('qrcode').innerHTML = "";
-            new QRCode(document.getElementById("qrcode"), {
-                text: taskUrl,
-                width: 200,
-                height: 200
-            });
-            document.getElementById('task').innerText = "Scan the QR code to get a task!";
+            fetch(SCRIPT_URL + '?action=getTask')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('task').innerText = data.task;
+                        document.getElementById('taskInput').value = data.task;
+                        document.getElementById('dateInput').value = new Date().toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                        new QRCode(document.getElementById('qrcode'), {
+                            text: data.task,
+                            width: 200,
+                            height: 200
+                        });
+                        // Auto-submit form to log the task
+                        document.getElementById('choreForm').submit();
+                    } else {
+                        document.getElementById('task').innerText = 'Error: ' + data.message;
+                        console.error('Error fetching task:', data.message);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('task').innerText = 'Error fetching task';
+                    console.error('Fetch error:', error);
+                });
         }
 
         // Reset task list
         function resetTasks() {
-            fetch(`${SCRIPT_URL}?action=reset&admin=true`)
+            fetch(SCRIPT_URL + '?action=reset&admin=true')
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
