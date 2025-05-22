@@ -3,118 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Random Cleaning Task</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>Daily Cleaning Task</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             padding: 20px;
             background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90vh;
+        }
+        #taskContainer {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
         #task {
-            font-size: 24px;
+            font-size: 2em; /* Larger task display */
             margin: 20px 0;
             color: #333;
+            min-height: 50px; /* Space for task text */
         }
-        #qrcode {
-            margin: 20px auto;
+        #taskDate {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 20px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 12px 25px;
+            font-size: 1.1em;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             margin: 10px;
+            transition: background-color 0.3s ease;
         }
         button:hover {
             background-color: #45a049;
         }
+        #completeButton {
+             display: none; /* Initially hidden */
+        }
         #resetButton {
-            display: none;
-            background-color: #ff4444;
+            background-color: #ffc107; /* Amber for reset */
+            display: none; /* Hidden unless admin */
         }
         #resetButton:hover {
-            background-color: #cc0000;
+            background-color: #e0a800;
         }
+        .message {
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        /* QR Code for page link - to be generated externally and displayed physically */
     </style>
 </head>
 <body>
-    <h1>Daily Cleaning Task</h1>
-    <div id="task">Loading task...</div>
-    <div id="qrcode"></div>
-    <form id="choreForm" action="redirect.html">
-        <input type="hidden" name="task" id="taskInput">
-        <input type="hidden" name="date" id="dateInput">
-        <button type="submit">Complete Chore</button>
-    </form>
-    <button onclick="generateQRCode()">Refresh QR Code</button>
-    <button id="resetButton" onclick="resetTasks()">Reset Tasks</button>
+    <h1>Today's Cleaning Task</h1>
+    <div id="taskContainer">
+        <div id="taskDate">Fetching date...</div>
+        <div id="task">Loading task...</div>
+        <button id="completeButton" onclick="logChore()">Mark as Complete</button>
+    </div>
+
+    <div id="adminControls">
+        <button id="refreshTaskButton" onclick="fetchTask()">Get/Refresh Today's Task</button>
+        <button id="resetButton" onclick="resetTasks()">Reset All Tasks (Admin)</button>
+    </div>
+    <div id="messageArea" class="message"></div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwETb_mVok6-a-6QnQd-CgBBKEckKTEwv9qXHqorOgXW14ZCgwxOWs6AvJZ5zcjwttk/exec';
+        // IMPORTANT: Replace with your Google Apps Script Web App URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztWLI8xNP0nddVblSljoBPWtJ4RFkWqmMUQG3D4VygP66wO73tt4DMeXgUr-XJjp0HPw/exec'; // Replace with your actual script URL
 
-        // Generate QR code and fetch task
-        function generateQRCode() {
-            document.getElementById('qrcode').innerHTML = "";
+        let currentTask = '';
+        let currentDate = '';
+
+        function displayMessage(text, type = 'info') {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.textContent = text;
+            messageArea.className = 'message ' + type; // Reset classes and add type
+        }
+
+        function fetchTask() {
+            document.getElementById('task').innerText = 'Loading task...';
+            document.getElementById('taskDate').innerText = 'Fetching date...';
+            document.getElementById('completeButton').style.display = 'none';
+            displayMessage(''); // Clear previous messages
+
             fetch(SCRIPT_URL + '?action=getTask')
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        document.getElementById('task').innerText = data.task;
-                        document.getElementById('taskInput').value = data.task;
-                        document.getElementById('dateInput').value = new Date().toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit'
+                        currentTask = data.task;
+                        currentDate = new Date().toLocaleDateString('en-US', {
+                            year: 'numeric', month: 'long', day: 'numeric'
                         });
-                        new QRCode(document.getElementById('qrcode'), {
-                            text: data.task,
-                            width: 200,
-                            height: 200
-                        });
-                        // Auto-submit form to log the task
-                        document.getElementById('choreForm').submit();
+                        document.getElementById('task').innerText = currentTask;
+                        document.getElementById('taskDate').innerText = `Task for: ${currentDate}`;
+                        
+                        if (data.allTasksCompleted === true || currentTask === 'No tasks left for today! Please reset if needed or wait until 4 PM.') {
+                            document.getElementById('completeButton').style.display = 'none';
+                            displayMessage(currentTask, 'info');
+                        } else if (currentTask.startsWith('Script error:')) {
+                            document.getElementById('completeButton').style.display = 'none';
+                            displayMessage(currentTask, 'error');
+                        }
+                        else {
+                            document.getElementById('completeButton').style.display = 'inline-block';
+                        }
                     } else {
-                        document.getElementById('task').innerText = 'Error: ' + data.message;
+                        document.getElementById('task').innerText = 'Error fetching task';
+                        displayMessage('Error: ' + data.message, 'error');
                         console.error('Error fetching task:', data.message);
                     }
                 })
                 .catch(error => {
                     document.getElementById('task').innerText = 'Error fetching task';
+                    displayMessage('Fetch error: ' + error.message, 'error');
                     console.error('Fetch error:', error);
                 });
         }
 
-        // Reset task list
+        function logChore() {
+            if (!currentTask || currentTask === 'No tasks left for today! Please reset if needed or wait until 4 PM.') {
+                displayMessage('No task to log or all tasks completed.', 'info');
+                return;
+            }
+
+            const payload = {
+                date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                task: currentTask
+            };
+
+            document.getElementById('completeButton').disabled = true;
+            displayMessage('Logging chore...', 'info');
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors', // Required for cross-origin POST to Apps Script
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload) // Send as JSON
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    displayMessage(`Chore logged: "${currentTask}"`, 'success');
+                    document.getElementById('completeButton').style.display = 'none'; // Hide after logging
+                    // Optionally, fetch a new task or indicate completion for the day
+                    // fetchTask(); // Could fetch next, or show "Today's task completed"
+                    document.getElementById('task').innerText = `"${currentTask}" has been logged!`;
+
+                } else {
+                    displayMessage('Error logging chore: ' + data.message, 'error');
+                    document.getElementById('completeButton').disabled = false;
+                }
+            })
+            .catch(error => {
+                displayMessage('Error logging chore: ' + error.message, 'error');
+                console.error('Log chore fetch error:', error);
+                document.getElementById('completeButton').disabled = false;
+            });
+        }
+
         function resetTasks() {
-            fetch(SCRIPT_URL + '?action=reset&admin=true')
+            if (!confirm('Are you sure you want to reset all tasks? This cannot be undone for the current pool.')) {
+                return;
+            }
+            displayMessage('Resetting tasks...', 'info');
+            fetch(SCRIPT_URL + '?action=reset&admin=true') // Assumes admin=true is handled by script for security
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        alert('Tasks have been reset!');
+                        displayMessage('Tasks have been reset! Fetching a new task.', 'success');
+                        fetchTask(); // Fetch a new task after reset
                     } else {
-                        alert('Error resetting tasks: ' + data.message);
+                        displayMessage('Error resetting tasks: ' + (data.message || 'Unknown error'), 'error');
                     }
                 })
-                .catch(error => alert('Error resetting tasks: ' + error.message));
+                .catch(error => {
+                    displayMessage('Error resetting tasks: ' + error.message, 'error');
+                    console.error('Reset tasks fetch error:', error);
+                });
         }
 
-        // Show reset button for admin access
         function checkAdminAccess() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
-                document.getElementById('resetButton').style.display = 'block';
+                document.getElementById('resetButton').style.display = 'inline-block';
             }
         }
 
-        // Initialize page
         window.onload = () => {
-            generateQRCode();
-            checkAdminAccess();
+            fetchTask();        // Fetch a task when the page loads
+            checkAdminAccess(); // Check if admin controls should be shown
         };
     </script>
 </body>
