@@ -80,7 +80,6 @@
     <div id="messageArea" class="message"></div>
 
     <script>
-        // Replace with your Google Apps Script Web App URLs
         const TASK_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytn7C_genCoCgM-Int_PYxbx63IOLy-uEZlOCmG5GSZ8zcc9YQoBvrwRPScrmqyvVOTQ/exec';
         const LOG_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwG9wTJIWOGWA9jV9CdosCiQM1QdXSyQEtsUP0NrxrU161Lsqp18Y2ygoa8FihZ8Of_/exec'; // Replace with second Apps Script URL
 
@@ -94,14 +93,13 @@
             messageArea.className = 'message ' + type;
         }
 
-        function fetchTask(isScan = false) {
+        function fetchTask() {
             document.getElementById('task').innerText = 'Loading task...';
             document.getElementById('taskDate').innerText = 'Fetching date...';
             document.getElementById('completeButton').style.display = 'none';
             displayMessage('');
 
-            const url = isScan ? `${TASK_SCRIPT_URL}?action=scan` : `${TASK_SCRIPT_URL}?action=getTask`;
-            fetch(url)
+            fetch(`${TASK_SCRIPT_URL}?action=scan`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -120,10 +118,7 @@
                             document.getElementById('completeButton').style.display = 'none';
                             displayMessage(currentTask, 'error');
                         } else {
-                            document.getElementById('completeButton').style.display = isScan ? 'none' : 'inline-block';
-                            if (isScan) {
-                                logChoreToSecondSheet();
-                            }
+                            logChoreToSecondSheet();
                         }
                     } else {
                         document.getElementById('task').innerText = 'Error fetching task';
@@ -242,12 +237,7 @@
         }
 
         window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('scan') && urlParams.get('scan') === 'true') {
-                fetchTask(true);
-            } else {
-                fetchTask();
-            }
+            fetchTask();
             checkAdminAccess();
         };
     </script>
