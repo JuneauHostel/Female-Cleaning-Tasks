@@ -24,10 +24,10 @@
             margin-bottom: 20px;
         }
         #task {
-            font-size: 2em; /* Larger task display */
+            font-size: 2em;
             margin: 20px 0;
             color: #333;
-            min-height: 50px; /* Space for task text */
+            min-height: 50px;
         }
         #taskDate {
             font-size: 0.9em;
@@ -49,11 +49,11 @@
             background-color: #45a049;
         }
         #completeButton {
-             display: none; /* Initially hidden */
+            display: none;
         }
         #resetButton {
-            background-color: #ffc107; /* Amber for reset */
-            display: none; /* Hidden unless admin */
+            background-color: #ffc107;
+            display: none;
         }
         #resetButton:hover {
             background-color: #e0a800;
@@ -64,7 +64,6 @@
         }
         .success { color: green; }
         .error { color: red; }
-        /* QR Code for page link - to be generated externally and displayed physically */
     </style>
 </head>
 <body>
@@ -74,7 +73,6 @@
         <div id="task">Loading task...</div>
         <button id="completeButton" onclick="logChore()">Mark as Complete</button>
     </div>
-
     <div id="adminControls">
         <button id="refreshTaskButton" onclick="fetchTask()">Get/Refresh Today's Task</button>
         <button id="resetButton" onclick="resetTasks()">Reset All Tasks (Admin)</button>
@@ -82,44 +80,50 @@
     <div id="messageArea" class="message"></div>
 
     <script>
-        // IMPORTANT: Replace with your Google Apps Script Web App URL
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr-hZGt8asz6DnsYO6_wXJ4P4P3c7olVPRBFI4Dx43otV0AtvUGjfOqI7VBhqIgJ7sWA/exec'; // Replace with your actual script URL
+        // Replace with your Google Apps Script Web App URLs
+        const TASK_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr-hZGt8asz6DnsYO6_wXJ4P4P3c7olVPRBFI4Dx43otV0AtvUGjfOqI7VBhqIgJ7sWA/exec';
+        const LOG_SCRIPT_URL = 'YOUR_SECOND_APPS_SCRIPT_URL'; // Replace with second Apps Script URL
 
         let currentTask = '';
         let currentDate = '';
+        let scanToken = null;
 
         function displayMessage(text, type = 'info') {
             const messageArea = document.getElementById('messageArea');
             messageArea.textContent = text;
-            messageArea.className = 'message ' + type; // Reset classes and add type
+            messageArea.className = 'message ' + type;
         }
 
-        function fetchTask() {
+        function fetchTask(isScan = false) {
             document.getElementById('task').innerText = 'Loading task...';
             document.getElementById('taskDate').innerText = 'Fetching date...';
             document.getElementById('completeButton').style.display = 'none';
-            displayMessage(''); // Clear previous messages
+            displayMessage('');
 
-            fetch(SCRIPT_URL + '?action=getTask')
+            const url = isScan ? `${TASK_SCRIPT_URL}?action=scan` : `${TASK_SCRIPT_URL}?action=getTask`;
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
                         currentTask = data.task;
+                        scanToken = data.token || null;
                         currentDate = new Date().toLocaleDateString('en-US', {
                             year: 'numeric', month: 'long', day: 'numeric'
                         });
                         document.getElementById('task').innerText = currentTask;
                         document.getElementById('taskDate').innerText = `Task for: ${currentDate}`;
                         
-                        if (data.allTasksCompleted === true || currentTask === 'No tasks left for today! Please reset if needed or wait until 4 PM.') {
+                        if (data.allTasksCompleted || currentTask === 'No tasks left for today! Please reset if needed or wait until 4 PM.') {
                             document.getElementById('completeButton').style.display = 'none';
                             displayMessage(currentTask, 'info');
                         } else if (currentTask.startsWith('Script error:')) {
                             document.getElementById('completeButton').style.display = 'none';
                             displayMessage(currentTask, 'error');
-                        }
-                        else {
-                            document.getElementById('completeButton').style.display = 'inline-block';
+                        } else {
+                            document.getElementById('completeButton').style.display = isScan ? 'none' : 'inline-block';
+                            if (isScan) {
+                                logChoreToSecondSheet();
+                            }
                         }
                     } else {
                         document.getElementById('task').innerText = 'Error fetching task';
@@ -148,23 +152,18 @@
             document.getElementById('completeButton').disabled = true;
             displayMessage('Logging chore...', 'info');
 
-            fetch(SCRIPT_URL, {
+            fetch(TASK_SCRIPT_URL, {
                 method: 'POST',
-                mode: 'cors', // Required for cross-origin POST to Apps Script
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload) // Send as JSON
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
                     displayMessage(`Chore logged: "${currentTask}"`, 'success');
-                    document.getElementById('completeButton').style.display = 'none'; // Hide after logging
-                    // Optionally, fetch a new task or indicate completion for the day
-                    // fetchTask(); // Could fetch next, or show "Today's task completed"
+                    document.getElementById('completeButton').style.display = 'none';
                     document.getElementById('task').innerText = `"${currentTask}" has been logged!`;
-
                 } else {
                     displayMessage('Error logging chore: ' + data.message, 'error');
                     document.getElementById('completeButton').disabled = false;
@@ -177,17 +176,54 @@
             });
         }
 
+        function logChoreToSecondSheet() {
+            if (!currentTask || !scanToken) {
+                displayMessage('No task or token to log.', 'error');
+                return;
+            }
+
+            const payload = {
+                date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                time: new Date().toLocaleTimeString('en-US', { timeZone: 'America/Juneau', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+                task: currentTask,
+                token: scanToken
+            };
+
+            displayMessage('Logging chore to record...', 'info');
+
+            fetch(LOG_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    displayMessage(`Chore logged: "${currentTask}"`, 'success');
+                    document.getElementById('task').innerText = `"${currentTask}" has been logged!`;
+                    scanToken = null; // Clear token to prevent re-logging
+                } else {
+                    displayMessage('Error logging chore: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                displayMessage('Error logging chore: ' + error.message, 'error');
+                console.error('Log chore fetch error:', error);
+            });
+        }
+
         function resetTasks() {
             if (!confirm('Are you sure you want to reset all tasks? This cannot be undone for the current pool.')) {
                 return;
             }
             displayMessage('Resetting tasks...', 'info');
-            fetch(SCRIPT_URL + '?action=reset&admin=true') // Assumes admin=true is handled by script for security
+            fetch(`${TASK_SCRIPT_URL}?action=reset&admin=true`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
                         displayMessage('Tasks have been reset! Fetching a new task.', 'success');
-                        fetchTask(); // Fetch a new task after reset
+                        fetchTask();
                     } else {
                         displayMessage('Error resetting tasks: ' + (data.message || 'Unknown error'), 'error');
                     }
@@ -206,8 +242,13 @@
         }
 
         window.onload = () => {
-            fetchTask();        // Fetch a task when the page loads
-            checkAdminAccess(); // Check if admin controls should be shown
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('scan') && urlParams.get('scan') === 'true') {
+                fetchTask(true);
+            } else {
+                fetchTask();
+            }
+            checkAdminAccess();
         };
     </script>
 </body>
